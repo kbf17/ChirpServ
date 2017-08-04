@@ -109,10 +109,8 @@ http.createServer(function(req, res){
                     };
                 };
             });
-        }else if (parsU.pathname.indexOf('/chirps/one/') > -1 && req.method === 'PUT'){
-            var lastSlashIndex = parsU.pathname.lastIndexOf('/');
-            var id = parsU.pathname.slice(lastSlashIndex + 1);
-            console.log('reading request');
+        }else if (parsU.pathname.indexOf('/chirps') > -1 && req.method === 'PUT'){
+            console.log('i am a put');
             var chunks = '',
                 data;
 
@@ -124,45 +122,21 @@ http.createServer(function(req, res){
                 data = JSON.parse(chunks);
             });
 
-            fs.readFile(pathJSON, 'utf-8', function(err, fileContents){
-                if (err) {
+            fs.readFile(pathJSON, 'utf-8', function(err, file){
+                if(err){
                     res.writeHead(500);
-                    res.end('Cannot read files');
-                }else{
-                    var arr = JSON.parse(fileContents);
-                    data.id = id;
-                    arr.push(data);
-                    var newData = JSON.parse(fileContents);
-                    var deleteIndex = -1;
-                    newData.forEach(function(chirp, i) {
-                        if (chirp.id === id) {
-                            deleteIndex = i;
-                            console.log(i);
+                    res.end('Unable to read');
+                } else {
+                    var arr = JSON.parse(file);
+                    data.forEach(function(a){
+                        if (a.id === data.id){
+                            a.message = data.message;
+                            a.user = data.user;
                         }
                     });
-                    if (deleteIndex != -1) {
-                        newData.splice(deleteIndex, 1);
-                        fs.writeFile(pathJSON, JSON.stringify(data), function(err, success) {
-                            if (err) {
-                                res.writeHead(500);
-                            } else {
-                                res.writeHead(202);
-                            }
-                        });
-                    } else {
-                        res.writeHead(404);
-                    };
-                };
-                    fs.writeFile(pathJSON, JSON.stringify(arr), function(err, success){
-                        if (err){
-                            res.writeHead(500);
-                            res.end('Unable to update data');
-                        } else{
-                            res.writeHead(201, 'Created');
-                            res.end(JSON.stringify(arr));
-                        }
-                    });
-            });
+
+                }
+            })
         };
 
 }).listen(3000);
