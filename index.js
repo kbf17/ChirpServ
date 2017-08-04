@@ -112,46 +112,57 @@ http.createServer(function(req, res){
         }else if (parsU.pathname.indexOf('/chirps/one/') > -1 && req.method === 'PUT'){
             var lastSlashIndex = parsU.pathname.lastIndexOf('/');
             var id = parsU.pathname.slice(lastSlashIndex + 1);
-            fs.readFile(pathJSON, 'utf-8', function(err, file){
-                if (err){
-                    res.writeHead(500);
-                    res.end('Unable to read file');
-                } else{
-                    var arr = JSON.parse(file);
-                    var result;
+            console.log('reading request');
+            var chunks = '',
+                data;
 
-                    arr.forEach(function(a) {
-                        if (a.id === id) {
-                        result = a;
+            req.on('data', function (chunk){
+                chunks += chunk;
+                if (chunks.length > 1e6){
+                    req.connection.destroy();
+                }
+                data = JSON.parse(chunks);
+            });
+
+            fs.readFile(pathJSON, 'utf-8', function(err, fileContents){
+                if (err) {
+                    res.writeHead(500);
+                    res.end('Cannot read files');
+                }else{
+                    var arr = JSON.parse(fileContents);
+                    data.id = id;
+                    arr.push(data);
+                    var newData = JSON.parse(fileContents);
+                    var deleteIndex = -1;
+                    newData.forEach(function(chirp, i) {
+                        if (chirp.id === id) {
+                            deleteIndex = i;
+                            console.log(i);
                         }
                     });
-                    if(result === undefined){
-                        res.writeHead(500);
-                        res.end('Post does not exist.');
-                    } else{
-                        var chunks = '',
-                            data;
-
-                        req.on('data', function (chunk){
-                            chunks += chunk;
-                            if (chunks.length > 1e6){
-                                req.connection.destroy();
-                            }
-                            data = JSON.parse(chunks);
-                        });
-                        arr.push(data);
-                        fs.writeFile(pathJSON, JSON.stringify(arr), function(err, success){
-                            if (err){
+                    if (deleteIndex != -1) {
+                        newData.splice(deleteIndex, 1);
+                        fs.writeFile(pathJSON, JSON.stringify(data), function(err, success) {
+                            if (err) {
                                 res.writeHead(500);
-                                res.end('Unable to update data');
-                            } else{
-                                res.writeHead(201, 'Created');
-                                res.end(JSON.stringify(arr));
+                            } else {
+                                res.writeHead(202);
                             }
                         });
-                    }
-                }
-            })
+                    } else {
+                        res.writeHead(404);
+                    };
+                };
+                    fs.writeFile(pathJSON, JSON.stringify(arr), function(err, success){
+                        if (err){
+                            res.writeHead(500);
+                            res.end('Unable to update data');
+                        } else{
+                            res.writeHead(201, 'Created');
+                            res.end(JSON.stringify(arr));
+                        }
+                    });
+            });
         };
 
 }).listen(3000);
