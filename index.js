@@ -7,6 +7,9 @@ var shortid = require('shortid');
 var pathJSON = path.join(__dirname, 'data.json');
 
 http.createServer(function(req, res){
+    if (req.url.charAt(req.url.length - 1) === '/') {
+        req.url = req.url.slice(0, req.url.length - 1);
+    }
     var parsU = url.parse(req.url);
 
 
@@ -76,54 +79,80 @@ http.createServer(function(req, res){
                 res.end(JSON.stringify(result));
             }
         })
-        }
-//     // } else if (parsU.pathname === '/chirps/one/' + number && req.method === 'DELETE'){
-//     //           fs.readFile(jsonPath, 'utf-8', function(err, fileContents) {
-//     //         if (err) {
-//     //             res.writeHead(500);
-//     //             res.end('Unable to delete');
-//     //         } else {
-//     //             var number = ByKoOgZPb;
-//     //              var data = JSON.parse(fileContents);
-//     //             var id = ByKoOgZPb;
-//     //             var deleteIndex = -1;
-//     //             data.forEach(function(chirp, i) {
-//     //                 if (chirp.id === ByKoOgZPb) {
-//     //                     deleteIndex = i;
-//     //                     console.log(i);
-//     //                 }
-//     //             });
-//     //             if (deleteIndex != -1) {
-//     //                 data.splice(deleteIndex, 1);
-//     //                 fs.writeFile(pathJSON, JSON.stringify(data), function(err, success) {
-//     //                     if (err) {
-//     //                         res.writeHead(500);
-//     //                     } else {
-//     //                         res.writeHead(202);
-//     //                     }
-//     //                 });
-//     //             } else {
-//     //                 res.writeHead(404);
-//     //             }
-//     //         }
-//         });
-        
-// //         fs.readFile(pathJSON, 'utf8', function (err, success){
-// // )            var data = JSON.parse(success);
-// //             var id = req.params.id;
-// // //             console.log(data)
-// //                 data.indexOf(id, 1)
-// //             // var newData = data.filter
-// //             // if(err){
-// //             //     throw new Error;
-// //             // } else{
-//                     // if (data.indexOf(id) > -1) 
-// //             //     data.splice(2,1);  
-// //             // }
-// //         } 
+        } else if (parsU.pathname.indexOf('/chirps/one/') >-1 && req.method === 'DELETE'){
+            var lastSlashIndex = parsU.pathname.lastIndexOf('/');
+            var id = parsU.pathname.slice(lastSlashIndex + 1);
+            fs.readFile(pathJSON, 'utf-8', function(err, fileContents) {
+                if (err) {
+                res.writeHead(500);
+                res.end('Unable to delete');
+                } else {
+                    var data = JSON.parse(fileContents);
+                    var deleteIndex = -1;
+                    data.forEach(function(chirp, i) {
+                        if (chirp.id === id) {
+                            deleteIndex = i;
+                            console.log(i);
+                        }
+                    });
+                    if (deleteIndex != -1) {
+                        data.splice(deleteIndex, 1);
+                        fs.writeFile(pathJSON, JSON.stringify(data), function(err, success) {
+                            if (err) {
+                                res.writeHead(500);
+                            } else {
+                                res.writeHead(202);
+                            }
+                        });
+                    } else {
+                        res.writeHead(404);
+                    };
+                };
+            });
+        }else if (parsU.pathname.indexOf('/chirps/one/') > -1 && req.method === 'PUT'){
+            var lastSlashIndex = parsU.pathname.lastIndexOf('/');
+            var id = parsU.pathname.slice(lastSlashIndex + 1);
+            fs.readFile(pathJSON, 'utf-8', function(err, file){
+                if (err){
+                    res.writeHead(500);
+                    res.end('Unable to read file');
+                } else{
+                    var arr = JSON.parse(file);
+                    var result;
 
+                    arr.forEach(function(a) {
+                        if (a.id === id) {
+                        result = a;
+                        }
+                    });
+                    if(result === undefined){
+                        res.writeHead(500);
+                        res.end('Post does not exist.');
+                    } else{
+                        var chunks = '',
+                            data;
 
-
+                        req.on('data', function (chunk){
+                            chunks += chunk;
+                            if (chunks.length > 1e6){
+                                req.connection.destroy();
+                            }
+                            data = JSON.parse(chunks);
+                        });
+                        arr.push(data);
+                        fs.writeFile(pathJSON, JSON.stringify(arr), function(err, success){
+                            if (err){
+                                res.writeHead(500);
+                                res.end('Unable to update data');
+                            } else{
+                                res.writeHead(201, 'Created');
+                                res.end(JSON.stringify(arr));
+                            }
+                        });
+                    }
+                }
+            })
+        };
 
 }).listen(3000);
 
